@@ -1,0 +1,80 @@
+#include "Riemann_Zeta.hpp"
+
+#include <cmath>
+#include <limits>
+#include <numbers>
+#include <vector>
+
+namespace{
+    const std::vector<double> primes{
+        2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
+        31, 37, 41, 43, 47, 53, 59, 61, 67,
+        71, 73, 79, 83, 89, 97, 101, 103, 107
+    };
+
+    double EulerProduct(double s){
+        double ans = 1.0;
+
+        for (double p : primes) {
+            ans *= 1.0 / (1.0 - std::pow(p, -s));
+        }
+
+        return ans;
+    }
+
+    double binomial(unsigned n, unsigned k){
+        return std::exp(
+            std::lgamma(n + 1.0) - std::lgamma(k + 1.0) - std::lgamma(n - k + 1.0)
+        );
+    }
+
+    double zeta_global(double s)
+    {
+        double zeta = 0.0;
+        double factor = 0.5;
+
+        constexpr unsigned max_iter = 1000;
+
+        for (unsigned n = 0; n < max_iter; ++n) {
+            double term = 0.0;
+
+            for (unsigned k = 0; k <= n; ++k) {
+                term += ((k % 2 == 0) ? 1.0 : -1.0)
+                      * binomial(n, k)
+                      * std::pow(k + 1.0, -s);
+            }
+
+            term *= factor;
+            zeta += term;
+
+            if (std::abs(term / zeta)
+                < std::numeric_limits<double>::epsilon())
+                break;
+
+            factor *= 0.5;
+        }
+
+        return zeta / (1.0 - std::pow(2.0, 1.0 - s));
+    }
+}
+
+double riemann_zeta(double s){
+    if (std::isnan(s))
+        return std::numeric_limits<double>::quiet_NaN();
+
+    if (s == 1.0)
+        return std::numeric_limits<double>::infinity();
+
+    if (s < -19.0) {
+        return std::exp2(s)
+             * std::pow(std::numbers::pi, s - 1.0)
+             * std::sin(std::numbers::pi * s / 2.0)
+             * std::tgamma(1.0 - s)
+             * riemann_zeta(1.0 - s);
+    }
+
+    if (s < 20.0)
+        return zeta_global(s);
+
+    return EulerProduct(s);
+}
